@@ -133,12 +133,15 @@ const Screening = () => {
     setShowResults(true); // Show results page structure immediately
 
     try {
+      const formData = new FormData();
+      formData.append('message', JSON.stringify(answers));
+
       const response = await fetch("https://heart-health-ai-assistant.daivanfebrijuansetiya.workers.dev/chat", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(answers),
+        // headers: { // Content-Type is set automatically by the browser for FormData
+        //   "Content-Type": "application/json", 
+        // },
+        body: formData,
       });
 
       if (!response.ok) {
