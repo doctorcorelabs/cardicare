@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Drug Interaction API CORS Test</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 20px;
+      line-height: 1.6;
+    }
+    h1, h2 {
+      color: #333;
+    }
+    .test-section {
+      margin-bottom: 30px;
+      padding: 15px;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+    }
+    .button-group {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-bottom: 15px;
+    }
+    button {
+      padding: 10px 15px;
+      background: #4CAF50;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    button:hover {
+      background: #45a049;
+    }
+    .result {
+      margin-top: 20px;
+      padding: 15px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      background-color: #f9f9f9;
+      min-height: 100px;
+    }
+    .error {
+      color: #d32f2f;
+    }
+    .success {
+      color: #388e3c;
+    }
+    pre {
+      background: #f5f5f5;
+      padding: 10px;
+      overflow-x: auto;
+      border-radius: 4px;
+      white-space: pre-wrap;
+    }
+    .diagnostic {
+      background-color: #fff3cd;
+      padding: 10px;
+      margin: 10px 0;
+      border-radius: 4px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Drug Interaction API CORS Test</h1>
+  
+  <div class="diagnostic">
+    <p><strong>Your current origin:</strong> <span id="origin"></span></p>
+    <p>Testing API endpoints for CORS compatibility.</p>
+  </div>
+
+  <div class="test-section">
+    <h2>Test Main Worker (Port 8787)</h2>
+    <div class="button-group">
+      <button id="test8787Btn">Test POST</button>
+      <button id="test8787OptionsBtn">Test OPTIONS</button>
+    </div>
+    <div id="result8787" class="result">
+      <p>Click a button to test this API endpoint.</p>
+    </div>
+  </div>
+
+  <div class="test-section">
+    <h2>Test Simple Worker (Port 8788)</h2>
+    <div class="button-group">
+      <button id="test8788Btn">Test POST</button>
+      <button id="test8788OptionsBtn">Test OPTIONS</button>
+    </div>
+    <div id="result8788" class="result">
+      <p>Click a button to test this API endpoint.</p>
+    </div>
+  </div>
+
+  <div class="test-section">
+    <h2>Test Super Simple CORS Worker (Port 8789)</h2>
+    <div class="button-group">
+      <button id="test8789Btn">Test POST</button>
+      <button id="test8789OptionsBtn">Test OPTIONS</button>
+    </div>
+    <div id="result8789" class="result">
+      <p>Click a button to test this API endpoint.</p>
+    </div>
+  </div>
+
+  <div class="test-section">
+    <h2>Troubleshooting Tips</h2>
+    <ul>
+      <li>Check if all workers are running properly</li>
+      <li>Verify that CORS headers are being set correctly</li>
+      <li>Examine browser console for detailed error messages</li>
+      <li>Make sure preflight OPTIONS requests are being handled</li>
+    </ul>
+  </div>
+
+  <script>
+    // Display current origin
+    document.getElementById('origin').textContent = window.location.origin;
+    
+    // Set up test buttons for the main worker (8787)
+    document.getElementById('test8787Btn').addEventListener('click', async () => {
+      await testApi('http://localhost:8787', 'POST', 'result8787');
+    });
+    document.getElementById('test8787OptionsBtn').addEventListener('click', async () => {
+      await testApi('http://localhost:8787', 'OPTIONS', 'result8787');
+    });
+
+    // Set up test buttons for the simple worker (8788)
+    document.getElementById('test8788Btn').addEventListener('click', async () => {
+      await testApi('http://localhost:8788', 'POST', 'result8788');
+    });
+    document.getElementById('test8788OptionsBtn').addEventListener('click', async () => {
+      await testApi('http://localhost:8788', 'OPTIONS', 'result8788');
+    });
+
+    // Set up test buttons for the simple CORS worker (8789)
+    document.getElementById('test8789Btn').addEventListener('click', async () => {
+      await testApi('http://localhost:8789', 'POST', 'result8789');
+    });
+    document.getElementById('test8789OptionsBtn').addEventListener('click', async () => {
+      await testApi('http://localhost:8789', 'OPTIONS', 'result8789');
+    });
+    
+    // Generic API test function
+    async function testApi(url, method, resultId) {
+      const resultEl = document.getElementById(resultId);
+      resultEl.innerHTML = `<p>Testing ${method} request to ${url}...</p>`;
+      
+      try {
+        console.log(`Sending ${method} request to ${url}...`);
+        
+        const options = {
+          method: method,
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+          },
+          mode: 'cors',
+        };
+        
+        // Add body for POST requests
+        if (method === 'POST') {
+          options.body = JSON.stringify({ drugs: ['aspirin', 'warfarin'] });
+        }
+        
+        // Make the request
+        const response = await fetch(url, options);
+        
+        console.log(`Response from ${url}:`, response);
+        
+        // Get and display headers
+        const headersObj = {};
+        response.headers.forEach((value, name) => {
+          headersObj[name] = value;
+        });
+        console.log('Response headers:', headersObj);
+        
+        let responseText = '';
+        try {
+          // Try to parse as JSON first
+          const data = await response.json();
+          responseText = JSON.stringify(data, null, 2);
+          console.log('Response data:', data);
+        } catch (e) {
+          // If not JSON, get text or use empty string for OPTIONS
+          try {
+            responseText = await response.text();
+          } catch (textError) {
+            responseText = '(empty body)';
+          }
+          console.log('Response text:', responseText);
+        }
+        
+        resultEl.innerHTML = `
+          <div class="success">✅ Success! Status: ${response.status} ${response.statusText}</div>
+          <h3>Response Headers:</h3>
+          <pre>${JSON.stringify(headersObj, null, 2)}</pre>
+          <h3>Response Body:</h3>
+          <pre>${responseText || '(empty body)'}</pre>
+        `;
+        
+      } catch (error) {
+        console.error(`Error testing ${url}:`, error);
+        
+        resultEl.innerHTML = `
+          <div class="error">❌ Error: ${error.message}</div>
+          <p>This is likely a CORS issue. Check the browser console for more details.</p>
+          <h3>Debugging Tips:</h3>
+          <ul>
+            <li>Is the worker running at ${url}?</li>
+            <li>Does the worker allow origin: ${window.location.origin}?</li>
+            <li>For OPTIONS: Is preflight handling implemented?</li>
+            <li>For POST: Are CORS headers included in the response?</li>
+          </ul>
+        `;
+      }
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,17 @@
+name = "drug-interaction-worker"
+main = "src/index.ts"
+compatibility_date = "2024-05-30" # You can update this to a more recent date
+
+[vars]
+# Add any environment variables here if needed in the future
+# Example: OPENFDA_API_KEY = "your_api_key_here"
+
+# If you plan to use KV, R2, Durable Objects, etc., configure them here.
+# For example:
+# [[kv_namespaces]]
+# binding = "MY_KV_NAMESPACE"
+# id = "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+
+# [[r2_buckets]]
+# binding = "MY_BUCKET"
+# bucket_name = "my-bucket"

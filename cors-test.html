@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CORS Test</title>
+</head>
+<body>
+  <h1>Drug Interaction API CORS Test</h1>
+  <button id="testBtn">Test API</button>
+  <div id="result" style="margin-top: 20px; padding: 10px; border: 1px solid #ccc;"></div>
+  <script>
+    document.getElementById('testBtn').addEventListener('click', async () => {
+      const resultEl = document.getElementById('result');
+      resultEl.innerHTML = 'Testing API call...';
+      
+      try {
+        console.log('Sending API request to http://localhost:8787...');
+        
+        // Try first with mode: 'cors' explicitly
+        const response = await fetch('http://localhost:8787', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+          },
+          mode: 'cors', // Explicitly request CORS
+          body: JSON.stringify({ drugs: ['aspirin', 'warfarin'] }),
+        });
+
+        console.log('Response received:', response);
+        console.log('Response headers:', Array.from(response.headers.entries()));
+        
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const data = await response.json();
+        console.log('Response data:', data);
+        
+        resultEl.innerHTML = `<p>Success! API responded with:</p>
+          <pre>${JSON.stringify(data, null, 2)}</pre>`;
+      } catch (error) {
+        console.error('API test error:', error);
+        resultEl.innerHTML = `
+          <p style="color: red;">Error: ${error.message}</p>
+          <p>Check the browser console for more details. This could be a CORS issue.</p>
+          <p>Common CORS issues:</p>
+          <ul>
+            <li>Worker not allowing the origin (${window.location.origin})</li>
+            <li>Worker not responding to preflight requests</li>
+            <li>Worker not setting appropriate CORS headers</li>
+          </ul>
+        `;
+      }
+    });
+  </script>
+</body>
+</html>
