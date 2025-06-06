@@ -3,7 +3,7 @@
   var __defProp = Object.defineProperty;
   var __name = (target, value) => __defProp(target, "name", { value, configurable: true });
 
-  // .wrangler/tmp/bundle-TyoKgz/checked-fetch.js
+  // .wrangler/tmp/bundle-dl5kw1/checked-fetch.js
   var urls = /* @__PURE__ */ new Set();
   function checkURL(request, init) {
     const url = request instanceof URL ? request : new URL(
@@ -29,7 +29,7 @@
     }
   });
 
-  // .wrangler/tmp/bundle-TyoKgz/strip-cf-connecting-ip-header.js
+  // .wrangler/tmp/bundle-dl5kw1/strip-cf-connecting-ip-header.js
   function stripCfConnectingIPHeader(input, init) {
     const request = new Request(input, init);
     request.headers.delete("CF-Connecting-IP");
@@ -287,7 +287,7 @@
   }, "jsonError");
   var middleware_miniflare3_json_error_default = jsonError;
 
-  // .wrangler/tmp/bundle-TyoKgz/middleware-insertion-facade.js
+  // .wrangler/tmp/bundle-dl5kw1/middleware-insertion-facade.js
   __facade_registerInternal__([middleware_ensure_req_body_drained_default, middleware_miniflare3_json_error_default]);
 
   // super-simple-interaction-worker.js
@@ -304,12 +304,17 @@
     const allowedOrigins = [
       "https://cardicare.daivanlabs.site",
       "http://localhost:8080",
-      "http://localhost:5173"
+      "http://localhost:5173",
+      "null"
+      // This allows requests from the file:// protocol
     ];
-    if (allowedOrigins.includes(requestOrigin)) {
+    if (true) {
+      corsHeaders["Access-Control-Allow-Origin"] = requestOrigin || "*";
+    } else if (allowedOrigins.includes(requestOrigin)) {
       corsHeaders["Access-Control-Allow-Origin"] = requestOrigin;
     } else {
       corsHeaders["Access-Control-Allow-Origin"] = "https://cardicare.daivanlabs.site";
+      console.log(`Rejected origin: ${requestOrigin}`);
     }
     if (request.method === "OPTIONS") {
       return new Response(null, {

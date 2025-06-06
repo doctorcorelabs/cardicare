@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CardiCare Direct CORS Test</title>
+  <style>
+    body { font-family: Arial, sans-serif; max-width: 800px; margin: 20px auto; padding: 20px; }
+    h1 { color: #3b82f6; margin-bottom: 30px; }
+    button { background: #3b82f6; color: white; border: none; padding: 10px 15px; border-radius: 4px; cursor: pointer; margin-top: 10px; }
+    button:hover { background: #2563eb; }
+    pre { background: #f1f5f9; padding: 15px; border-radius: 4px; overflow: auto; margin-top: 15px; }
+    .success { color: green; font-weight: bold; }
+    .error { color: red; font-weight: bold; }
+    .test-group { margin-bottom: 30px; padding: 20px; border: 1px solid #e2e8f0; border-radius: 8px; }
+    input { padding: 8px; width: 100%; margin-bottom: 10px; border: 1px solid #ddd; border-radius: 4px; }
+    label { display: block; margin-bottom: 5px; font-weight: bold; }
+    .drug-input { margin-bottom: 15px; }
+    #addDrug { background: #10b981; margin-right: 10px; }
+    #removeDrug { background: #ef4444; }
+  </style>
+</head>
+<body>
+  <h1>CardiCare Direct CORS Test</h1>
+  
+  <div class="test-group">
+    <h2>Drug Interaction Test</h2>
+    <p>Test the drug interaction worker with custom drugs</p>
+    
+    <div id="drugInputs">
+      <div class="drug-input">
+        <label>Drug 1:</label>
+        <input type="text" class="drug-name" value="aspirin">
+      </div>
+      <div class="drug-input">
+        <label>Drug 2:</label>
+        <input type="text" class="drug-name" value="warfarin">
+      </div>
+    </div>
+    
+    <button id="addDrug">Add Drug</button>
+    <button id="removeDrug">Remove Drug</button>
+    <button id="testDrugs">Test Drug Interactions</button>
+    
+    <div>
+      <p>Status: <span id="status">Not tested</span></p>
+      <pre id="result">Results will appear here...</pre>
+    </div>
+  </div>
+  
+  <div class="test-group">
+    <h2>Endpoints</h2>
+    <p>Select the endpoint to test:</p>
+    
+    <label>
+      <input type="radio" name="endpoint" value="local" checked> 
+      Local (http://localhost:8789)
+    </label>
+    <br>
+    <label>
+      <input type="radio" name="endpoint" value="production"> 
+      Production (https://drug-interaction-worker.cardicare.daivanlabs.site)
+    </label>
+  </div>
+  
+  <script>
+    // Get elements
+    const drugInputsContainer = document.getElementById('drugInputs');
+    const addDrugButton = document.getElementById('addDrug');
+    const removeDrugButton = document.getElementById('removeDrug');
+    const testButton = document.getElementById('testDrugs');
+    const statusEl = document.getElementById('status');
+    const resultEl = document.getElementById('result');
+    const endpointRadios = document.getElementsByName('endpoint');
+    
+    // Add drug input field
+    addDrugButton.addEventListener('click', () => {
+      const inputs = document.getElementsByClassName('drug-input');
+      const newIndex = inputs.length + 1;
+      
+      const newInput = document.createElement('div');
+      newInput.className = 'drug-input';
+      newInput.innerHTML = `
+        <label>Drug ${newIndex}:</label>
+        <input type="text" class="drug-name">
+      `;
+      
+      drugInputsContainer.appendChild(newInput);
+    });
+    
+    // Remove last drug input field
+    removeDrugButton.addEventListener('click', () => {
+      const inputs = document.getElementsByClassName('drug-input');
+      if (inputs.length > 2) {
+        drugInputsContainer.removeChild(inputs[inputs.length - 1]);
+      }
+    });
+      // Test drug interactions
+    testButton.addEventListener('click', async () => {
+      // Get all drug names
+      const drugInputs = document.getElementsByClassName('drug-name');
+      const drugs = Array.from(drugInputs)
+        .map(input => input.value.trim())
+        .filter(name => name.length > 0);
+      
+      // Ensure we have at least two drugs
+      if (drugs.length < 2) {
+        statusEl.textContent = 'ERROR: At least two drugs are required';
+        statusEl.className = 'error';
+        resultEl.textContent = 'Please enter at least two drug names';
+        return;
+      }
+      
+      // Log information to help debug
+      console.log('Testing drug interactions with:', drugs);
+      
+      // Get selected endpoint
+      let endpoint = 'http://localhost:8789';
+      for (const radio of endpointRadios) {
+        if (radio.checked) {
+          if (radio.value === 'production') {
+            endpoint = 'https://drug-interaction-worker.cardicare.daivanlabs.site';
+          }
+          break;
+        }
+      }
+      
+      // Update UI
+      statusEl.textContent = 'Testing...';
+      statusEl.className = '';
+      resultEl.textContent = `Sending request to: ${endpoint}\n\nDrugs: ${drugs.join(', ')}`;      try {
+        // Show request details to help debugging
+        console.log('Sending request to:', endpoint);
+        console.log('Request body:', JSON.stringify({ drugs }));
+        
+        // Display origin information to help troubleshoot CORS
+        console.log('Current origin:', window.location.origin);
+        
+        // Send the request
+        const response = await fetch(endpoint, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+          },
+          mode: 'cors',
+          body: JSON.stringify({ drugs })
+        });
+        
+        console.log('Response status:', response.status);
+        
+        // Get response data
+        const data = await response.text();
+        let jsonData;
+        try {
+          jsonData = JSON.parse(data);
+        } catch (e) {
+          jsonData = { error: 'Invalid JSON response', raw: data };
+        }
+        
+        // Update UI based on result
+        if (response.ok) {
+          statusEl.textContent = 'SUCCESS';
+          statusEl.className = 'success';
+        } else {
+          statusEl.textContent = 'FAILED';
+          statusEl.className = 'error';
+        }
+        
+        // Display detailed response
+        resultEl.textContent = JSON.stringify(jsonData, null, 2);
+        
+      } catch (error) {
+        // Handle errors
+        statusEl.textContent = 'ERROR';
+        statusEl.className = 'error';
+        resultEl.textContent = `Network error: ${error.message}\n\nThis might indicate a CORS issue. Check that the server is running and CORS is properly configured.`;
+      }
+    });
+  </script>
+</body>
+</html>

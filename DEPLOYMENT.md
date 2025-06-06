@@ -5,26 +5,34 @@ This guide explains how to deploy the CardiCare application to the domain `cardi
 
 ## Deployment Steps
 
-### 1. Deploy the Cloudflare Worker
+### 1. Deploy the Cloudflare Workers
 
-The drug interaction checker uses a Cloudflare Worker to avoid CORS issues.
+CardiCare uses two Cloudflare Workers:
+1. Drug interaction worker - for medication interaction checks
+2. Main API worker - for AI assistant functionality
 
 ```bash
-# Navigate to the drug interaction worker directory
+# Deploy the drug interaction worker
 cd drug-interaction-worker
+npx wrangler publish
 
-# Deploy the worker to Cloudflare
+# Navigate back to project root
+cd ..
+
+# Deploy the main AI assistant worker
+cd cloudflare-worker
 npx wrangler publish
 ```
 
-Make note of the worker URL after deployment.
+Make note of the worker URLs after deployment.
 
 ### 2. Configure DNS Records
 
 In your domain registrar or DNS provider, set up the following records:
 
 - **A Record**: `cardicare.daivanlabs.site` → Your hosting server IP
-- **CNAME Record**: `drug-interaction-worker.cardicare.daivanlabs.site` → `<your-worker-name>.workers.dev`
+- **CNAME Record**: `drug-interaction-worker.cardicare.daivanlabs.site` → `<your-drug-worker-name>.workers.dev`
+- **CNAME Record**: `api.cardicare.daivanlabs.site` → `<your-ai-worker-name>.workers.dev`
 
 ### 3. Build the React Application
 
@@ -51,17 +59,48 @@ Upload the contents of the `dist` directory to your web hosting provider.
 
 If you encounter CORS errors:
 
-1. Check the worker's CORS headers:
-   - The worker should be configured to allow requests from `https://cardicare.daivanlabs.site`
+1. Check the workers' CORS headers:
+   - Both workers should be configured to allow requests from `https://cardicare.daivanlabs.site`
    - Verify the protocols match (https vs http)
 
-2. Test the worker directly:
-   - Visit `https://drug-interaction-worker.cardicare.daivanlabs.site` in your browser
+2. Test the workers directly:
+   - Visit `https://drug-interaction-worker.cardicare.daivanlabs.site` for the drug interaction worker
+   - Visit `https://api.cardicare.daivanlabs.site` for the main AI assistant worker
    - You should see a response (likely an error about invalid request method, which is fine)
 
 3. Check browser console for detailed CORS error messages
 
-4. If needed, you can modify the CORS settings in `super-simple-interaction-worker.js`
+4. If needed, you can modify the CORS settings in:
+   - `drug-interaction-worker/super-simple-interaction-worker.js` for drug interactions
+   - `cloudflare-worker/src/cors-utils.ts` for AI assistant
+
+5. Use the standalone test file:
+   - Open `drug-interaction-test.html` in your browser to test without running a server
+   - This lets you test with various drug combinations to verify the worker is functioning
+
+## Testing CORS Before Full Deployment
+
+There are several ways to test the CORS configuration before deploying:
+
+### 1. Using the Node.js Test Server
+
+```bash
+# Run the CORS test tool
+npm run test:cors
+```
+
+This will start a local server at http://localhost:9000 with a web interface to test the CORS settings for both workers.
+
+### 2. Using the Static HTML Test File
+
+Open the `drug-interaction-test.html` file directly in your browser:
+
+```bash
+# On Windows
+start drug-interaction-test.html
+```
+
+This HTML file works without a server and lets you test drug interactions with custom drug names.
 
 ## Using the Automated Deployment Script
 
@@ -69,6 +108,8 @@ For convenience, you can use the included PowerShell script to deploy both the w
 
 ```bash
 # Run from the root directory of the project
+npm run deploy
+# Or directly:
 ./deploy.ps1
 ```
 

@@ -1,7 +1,7 @@
 var __defProp = Object.defineProperty;
 var __name = (target, value) => __defProp(target, "name", { value, configurable: true });
 
-// .wrangler/tmp/bundle-eIKYZJ/checked-fetch.js
+// .wrangler/tmp/bundle-jHPt6m/checked-fetch.js
 var urls = /* @__PURE__ */ new Set();
 function checkURL(request, init) {
   const url = request instanceof URL ? request : new URL(
@@ -27,7 +27,7 @@ globalThis.fetch = new Proxy(globalThis.fetch, {
   }
 });
 
-// .wrangler/tmp/bundle-eIKYZJ/strip-cf-connecting-ip-header.js
+// .wrangler/tmp/bundle-jHPt6m/strip-cf-connecting-ip-header.js
 function stripCfConnectingIPHeader(input, init) {
   const request = new Request(input, init);
   request.headers.delete("CF-Connecting-IP");
@@ -9517,6 +9517,51 @@ var GoogleGenAI = class {
   }
 };
 
+// src/cors-utils.ts
+function getCorsHeaders(request) {
+  const requestOrigin = request.headers.get("Origin") || "";
+  const corsHeaders = {
+    "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+    "Access-Control-Allow-Headers": "Content-Type, Accept",
+    "Access-Control-Max-Age": "86400"
+  };
+  const allowedOrigins = [
+    "https://cardicare.daivanlabs.site",
+    "http://localhost:8080",
+    "http://localhost:5173"
+  ];
+  if (allowedOrigins.includes(requestOrigin)) {
+    corsHeaders["Access-Control-Allow-Origin"] = requestOrigin;
+  } else {
+    corsHeaders["Access-Control-Allow-Origin"] = "https://cardicare.daivanlabs.site";
+  }
+  return corsHeaders;
+}
+__name(getCorsHeaders, "getCorsHeaders");
+function handleCorsPreflightRequest(request) {
+  if (request.method === "OPTIONS") {
+    return new Response(null, {
+      status: 204,
+      headers: getCorsHeaders(request)
+    });
+  }
+  return null;
+}
+__name(handleCorsPreflightRequest, "handleCorsPreflightRequest");
+function applyCorsHeaders(response, request) {
+  const corsHeaders = getCorsHeaders(request);
+  const newHeaders = new Headers(response.headers);
+  Object.entries(corsHeaders).forEach(([key, value]) => {
+    newHeaders.set(key, value);
+  });
+  return new Response(response.body, {
+    status: response.status,
+    statusText: response.statusText,
+    headers: newHeaders
+  });
+}
+__name(applyCorsHeaders, "applyCorsHeaders");
+
 // src/index.ts
 function bufferToBase64(buffer) {
   let binary = "";
@@ -9551,6 +9596,10 @@ Remember to maintain a supportive and helpful tone throughout the interaction.
 `;
 var src_default = {
   async fetch(request, env, ctx) {
+    const corsPreflightResponse = handleCorsPreflightRequest(request);
+    if (corsPreflightResponse) {
+      return corsPreflightResponse;
+    }
     const url = new URL(request.url);
     if (url.pathname === "/chat" && request.method === "POST") {
       try {
@@ -9662,9 +9711,12 @@ var src_default = {
             }
           }
         })();
-        return new Response(readable, {
-          headers: { "Content-Type": "text/plain; charset=utf-8" }
+        const response = new Response(readable, {
+          headers: {
+            "Content-Type": "text/plain; charset=utf-8"
+          }
         });
+        return applyCorsHeaders(response, request);
       } catch (error) {
         console.error("Error in /chat handler (raw):", error);
         if (error instanceof Error) {
@@ -9678,10 +9730,14 @@ var src_default = {
           console.error("Unknown error object structure:", error);
         }
         const errorMessage = error instanceof Error ? error.message : "An unknown error occurred. Check worker logs for details.";
-        return new Response(`Error processing chat request: ${errorMessage}`, { status: 500 });
+        const errorResponse = new Response(`Error processing chat request: ${errorMessage}`, {
+          status: 500
+        });
+        return applyCorsHeaders(errorResponse, request);
       }
     }
-    return new Response("Not Found", { status: 404 });
+    const notFoundResponse = new Response("Not Found", { status: 404 });
+    return applyCorsHeaders(notFoundResponse, request);
   }
 };
 
@@ -9726,7 +9782,7 @@ var jsonError = /* @__PURE__ */ __name(async (request, env, _ctx, middlewareCtx)
 }, "jsonError");
 var middleware_miniflare3_json_error_default = jsonError;
 
-// .wrangler/tmp/bundle-eIKYZJ/middleware-insertion-facade.js
+// .wrangler/tmp/bundle-jHPt6m/middleware-insertion-facade.js
 var __INTERNAL_WRANGLER_MIDDLEWARE__ = [
   middleware_ensure_req_body_drained_default,
   middleware_miniflare3_json_error_default
@@ -9758,7 +9814,7 @@ function __facade_invoke__(request, env, ctx, dispatch, finalMiddleware) {
 }
 __name(__facade_invoke__, "__facade_invoke__");
 
-// .wrangler/tmp/bundle-eIKYZJ/middleware-loader.entry.ts
+// .wrangler/tmp/bundle-jHPt6m/middleware-loader.entry.ts
 var __Facade_ScheduledController__ = class ___Facade_ScheduledController__ {
   constructor(scheduledTime, cron, noRetry) {
     this.scheduledTime = scheduledTime;

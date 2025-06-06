@@ -18,6 +18,15 @@ export default defineConfig(({ mode }) => ({
       },
     },
   },
+  // Define external API endpoints for production build
+  define: {
+    'import.meta.env.VITE_API_URL': mode === 'production' 
+      ? JSON.stringify('https://api.cardicare.daivanlabs.site')
+      : JSON.stringify('http://localhost:8787'),
+    'import.meta.env.VITE_DRUG_INTERACTION_URL': mode === 'production'
+      ? JSON.stringify('https://drug-interaction-worker.cardicare.daivanlabs.site')
+      : JSON.stringify('http://localhost:8789'),
+  },
   plugins: [
     react(),
     mode === 'development' &&

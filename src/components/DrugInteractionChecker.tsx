@@ -24,8 +24,8 @@ interface ApiResponse {
   error?: string;
 }
 
-// Configure worker URL for drug interaction API
-const WORKER_URL = 'https://drug-interaction-worker.cardicare.daivanlabs.site'; // Production worker URL
+// Configure worker URL for drug interaction API - use environment variable or fallback
+const WORKER_URL = import.meta.env.VITE_DRUG_INTERACTION_URL || 'https://drug-interaction-worker.cardicare.daivanlabs.site';
 
 const DrugInteractionChecker: React.FC = () => {
   const [drugInputs, setDrugInputs] = useState<DrugInput[]>([

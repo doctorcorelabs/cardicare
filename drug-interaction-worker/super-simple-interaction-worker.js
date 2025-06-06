@@ -15,20 +15,25 @@ async function handleRequest(request) {
     'Access-Control-Allow-Headers': 'Content-Type, Accept',
     'Access-Control-Max-Age': '86400'
   };
-  
   // Whitelist of allowed origins
   const allowedOrigins = [
     'https://cardicare.daivanlabs.site',
     'http://localhost:8080',
-    'http://localhost:5173'
+    'http://localhost:5173',
+    'null' // This allows requests from the file:// protocol
   ];
   
-  // Decide which origin to allow
-  if (allowedOrigins.includes(requestOrigin)) {
+  // For development or when running from a file, be more permissive
+  if (process.env.NODE_ENV !== 'production' || requestOrigin === 'null') {
+    corsHeaders['Access-Control-Allow-Origin'] = requestOrigin || '*';
+  }
+  // Otherwise use the whitelist
+  else if (allowedOrigins.includes(requestOrigin)) {
     corsHeaders['Access-Control-Allow-Origin'] = requestOrigin;
   } else {
     // Default to the production domain
     corsHeaders['Access-Control-Allow-Origin'] = 'https://cardicare.daivanlabs.site';
+    console.log(`Rejected origin: ${requestOrigin}`);
   }
 
   // Handle OPTIONS request for CORS preflight

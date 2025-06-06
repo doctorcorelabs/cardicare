@@ -206,10 +206,12 @@ const Chatbot: React.FC = () => {
       }
       return prevMessages;
     });
-
-
     try {
-      const response = await fetch('/api/chat', {
+      // Use environment variable for API URL in production or fallback to relative path for development
+      const apiUrl = import.meta.env.DEV ? '/api/chat' : `${import.meta.env.VITE_API_URL}/chat`;
+      console.log(`Sending request to: ${apiUrl}`);
+      
+      const response = await fetch(apiUrl, {
         method: 'POST',
         // headers: { 'Content-Type': 'application/json' }, // Removed for FormData
         body: formData, // Use FormData

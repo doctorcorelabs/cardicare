@@ -1,4 +1,5 @@
 import { GoogleGenAI, HarmCategory, HarmBlockThreshold, GenerationConfig, Content, Part } from '@google/genai';
+import { getCorsHeaders, handleCorsPreflightRequest, applyCorsHeaders } from './cors-utils';
 
 export interface Env {
   GEMINI_API_KEY: string;
@@ -40,6 +41,12 @@ Remember to maintain a supportive and helpful tone throughout the interaction.
 
 export default {
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
+    // Handle CORS preflight requests
+    const corsPreflightResponse = handleCorsPreflightRequest(request);
+    if (corsPreflightResponse) {
+      return corsPreflightResponse;
+    }
+    
     const url = new URL(request.url);
     if (url.pathname === '/chat' && request.method === 'POST') {
       try {
@@ -180,9 +187,13 @@ export default {
           }
         })();
 
-        return new Response(readable, {
-          headers: { 'Content-Type': 'text/plain; charset=utf-8' },
+        const response = new Response(readable, {
+          headers: { 
+            'Content-Type': 'text/plain; charset=utf-8',
+          },
         });
+        
+        return applyCorsHeaders(response, request);
 
       } catch (error) {
         console.error('Error in /chat handler (raw):', error); 
@@ -197,10 +208,15 @@ export default {
           console.error('Unknown error object structure:', error);
         }
         const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred. Check worker logs for details.';
-        return new Response(`Error processing chat request: ${errorMessage}`, { status: 500 });
+        const errorResponse = new Response(`Error processing chat request: ${errorMessage}`, { 
+          status: 500
+        });
+        
+        return applyCorsHeaders(errorResponse, request);
       }
     }
 
-    return new Response('Not Found', { status: 404 });
+    const notFoundResponse = new Response('Not Found', { status: 404 });
+    return applyCorsHeaders(notFoundResponse, request);
   },
 };
