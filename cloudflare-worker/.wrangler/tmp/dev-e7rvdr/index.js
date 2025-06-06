@@ -1,7 +1,7 @@
 var __defProp = Object.defineProperty;
 var __name = (target, value) => __defProp(target, "name", { value, configurable: true });
 
-// .wrangler/tmp/bundle-cj9qHy/checked-fetch.js
+// .wrangler/tmp/bundle-4N5dho/checked-fetch.js
 var urls = /* @__PURE__ */ new Set();
 function checkURL(request, init) {
   const url = request instanceof URL ? request : new URL(
@@ -27,7 +27,7 @@ globalThis.fetch = new Proxy(globalThis.fetch, {
   }
 });
 
-// .wrangler/tmp/bundle-cj9qHy/strip-cf-connecting-ip-header.js
+// .wrangler/tmp/bundle-4N5dho/strip-cf-connecting-ip-header.js
 function stripCfConnectingIPHeader(input, init) {
   const request = new Request(input, init);
   request.headers.delete("CF-Connecting-IP");
@@ -9601,6 +9601,19 @@ var src_default = {
       return corsPreflightResponse;
     }
     const url = new URL(request.url);
+    if (url.pathname === "/ping" || url.pathname === "/health") {
+      return new Response(JSON.stringify({
+        status: "ok",
+        timestamp: (/* @__PURE__ */ new Date()).toISOString(),
+        version: "1.0.0"
+      }), {
+        status: 200,
+        headers: {
+          "Content-Type": "application/json",
+          ...getCorsHeaders(request)
+        }
+      });
+    }
     if (url.pathname === "/chat" && request.method === "POST") {
       try {
         if (!env.GEMINI_API_KEY) {
@@ -9782,7 +9795,7 @@ var jsonError = /* @__PURE__ */ __name(async (request, env, _ctx, middlewareCtx)
 }, "jsonError");
 var middleware_miniflare3_json_error_default = jsonError;
 
-// .wrangler/tmp/bundle-cj9qHy/middleware-insertion-facade.js
+// .wrangler/tmp/bundle-4N5dho/middleware-insertion-facade.js
 var __INTERNAL_WRANGLER_MIDDLEWARE__ = [
   middleware_ensure_req_body_drained_default,
   middleware_miniflare3_json_error_default
@@ -9814,7 +9827,7 @@ function __facade_invoke__(request, env, ctx, dispatch, finalMiddleware) {
 }
 __name(__facade_invoke__, "__facade_invoke__");
 
-// .wrangler/tmp/bundle-cj9qHy/middleware-loader.entry.ts
+// .wrangler/tmp/bundle-4N5dho/middleware-loader.entry.ts
 var __Facade_ScheduledController__ = class ___Facade_ScheduledController__ {
   constructor(scheduledTime, cron, noRetry) {
     this.scheduledTime = scheduledTime;

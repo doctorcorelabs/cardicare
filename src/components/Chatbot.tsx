@@ -4,6 +4,9 @@ import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Bot, User, Send, Paperclip, XCircle } from 'lucide-react'; // Added Paperclip, XCircle
 import ReactMarkdown, { Components } from 'react-markdown';
+import { fetchWithFallback } from '@/lib/api-utils';
+import { checkApiHealth } from '@/lib/api-health';
+import ApiStatusIndicator from '@/components/ApiStatusIndicator';
 
 interface Message {
   id: string;
@@ -57,6 +60,8 @@ const Chatbot: React.FC = () => {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [filePreview, setFilePreview] = useState<string | null>(null); // For image dataURL or PDF name
   const [fileError, setFileError] = useState<string | null>(null);
+  const [apiStatus, setApiStatus] = useState<'online' | 'offline' | 'fallback' | 'unknown'>('unknown');
+  const [checkingApi, setCheckingApi] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const chatContainerRef = useRef<HTMLDivElement>(null); // Ref for the main chat container
@@ -69,10 +74,48 @@ const Chatbot: React.FC = () => {
       }
     }
   };
-
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
+    // Check API status when component mounts
+  useEffect(() => {
+    const checkStatus = async () => {
+      setCheckingApi(true);
+      try {
+        const healthStatus = await checkApiHealth();
+        console.log('API health check result:', healthStatus);
+        setApiStatus(healthStatus.status);
+      } catch (error) {
+        console.error('Error checking API health:', error);
+        setApiStatus('offline');
+      } finally {
+        setCheckingApi(false);
+      }
+    };
+    
+    checkStatus();
+    
+    // Set up a periodic health check every 5 minutes
+    const intervalId = setInterval(checkStatus, 5 * 60 * 1000);
+    
+    return () => {
+      clearInterval(intervalId);
+    };
+  }, []);
+  
+  // Function to manually refresh API status
+  const refreshApiStatus = async () => {
+    setCheckingApi(true);
+    try {
+      const healthStatus = await checkApiHealth();
+      setApiStatus(healthStatus.status);
+    } catch (error) {
+      console.error('Error refreshing API health:', error);
+      setApiStatus('offline');
+    } finally {
+      setCheckingApi(false);
+    }
+  };
 
   useEffect(() => {
     const pasteHandler = (event: ClipboardEvent) => {
@@ -205,24 +248,34 @@ const Chatbot: React.FC = () => {
         return [...prevMessages, { id: aiResponseId, text: '', sender: 'ai', timestamp: new Date() }];
       }
       return prevMessages;
-    });
-    try {
+    });    try {
       // Use environment variable for API URL in production or fallback to relative path for development
-      const apiUrl = import.meta.env.DEV ? '/api/chat' : `${import.meta.env.VITE_API_URL}/chat`;
-      console.log(`Sending request to: ${apiUrl}`);
+      // Get both primary and fallback API URLs
+      const baseApiUrl = import.meta.env.DEV ? '/api' : import.meta.env.VITE_API_URL.replace(/\/+$/, '');
+      const fallbackApiUrl = import.meta.env.DEV ? '/api' : import.meta.env.VITE_API_URL_FALLBACK.replace(/\/+$/, '');
       
-      const response = await fetch(apiUrl, {
-        method: 'POST',
-        // headers: { 'Content-Type': 'application/json' }, // Removed for FormData
-        body: formData, // Use FormData
-      });
-
-      if (!response.ok) { // Check response.ok first
+      const primaryApiUrl = `${baseApiUrl}/chat`;
+      const secondaryApiUrl = `${fallbackApiUrl}/chat`;
+      
+      console.log(`Attempting to send request using fetchWithFallback`);
+      
+      // Use our utility with automatic retries and fallback
+      const response = await fetchWithFallback(
+        primaryApiUrl,
+        secondaryApiUrl,
+        {
+          method: 'POST',
+          body: formData,
+        },
+        2 // maximum retry count
+      );if (!response.ok) { // Check response.ok first
         const errorText = await response.text();
         // Display specific error from backend if available
         const displayError = response.status === 413 ? 'File is too large. Max 10MB.' :
                              response.status === 415 ? 'Unsupported file type. Please use JPG, PNG, GIF, WEBP, or PDF.' :
+                             response.status === 404 ? 'Could not connect to chat service. The server may be down or unavailable.' :
                              `Server error: ${response.status} ${errorText || response.statusText}`;
+        console.error(`API error: ${displayError}`);
         throw new Error(displayError);
       }
       if (!response.body) { // Then check response.body
@@ -256,14 +309,30 @@ const Chatbot: React.FC = () => {
           )
         );
       }
-
-
     } catch (error) {
       console.error('Chatbot error:', error);
+        // Determine if this is a network/connection error
+      const isNetworkError = error instanceof TypeError && error.message.includes('fetch');
+      const isDNSError = error instanceof Error && 
+                        (error.message.includes('ERR_NAME_NOT_RESOLVED') || 
+                         error.message.includes('net::ERR_NAME_NOT_RESOLVED'));
+      
+      // Create more user-friendly error messages
+      let errorMessage;
+      if (isNetworkError) {
+        errorMessage = 'Network error: Could not connect to the chat service. Please check your internet connection and try again.';
+      } else if (isDNSError) {
+        errorMessage = 'Server unavailable: The chat service is currently unavailable. Our team has been notified of this issue.';
+      } else if (error instanceof Error && error.message.includes('404')) {
+        errorMessage = 'Server not found: The chat service may be temporarily down for maintenance. Please try again later.';
+      } else {
+        errorMessage = error instanceof Error ? error.message : 'Sorry, an error occurred. Please try again.';
+      }
+      
       setMessages((prevMessages) =>
         prevMessages.map((msg) =>
           msg.id === aiResponseId
-            ? { ...msg, text: error instanceof Error ? error.message : 'Sorry, an error occurred. Please try again.' }
+            ? { ...msg, text: errorMessage }
             : msg
         )
       );
@@ -275,12 +344,27 @@ const Chatbot: React.FC = () => {
   };
 
   return (
-    <div ref={chatContainerRef} className="flex flex-col h-[500px] max-w-lg mx-auto bg-white shadow-xl rounded-lg border border-gray-200" tabIndex={0} /* Make div focusable for paste */ >
-      <div className="p-4 border-b border-gray-200">
-        <h2 className="text-xl font-semibold text-gray-800 flex items-center">
-          <Bot className="mr-2 h-6 w-6 text-blue-600" />
-          CardiCare Assistant
+    <div ref={chatContainerRef} className="flex flex-col h-[500px] max-w-lg mx-auto bg-white shadow-xl rounded-lg border border-gray-200" tabIndex={0} /* Make div focusable for paste */ >      <div className="p-4 border-b border-gray-200">
+        <h2 className="text-xl font-semibold text-gray-800 flex items-center justify-between">
+          <div className="flex items-center">
+            <Bot className="mr-2 h-6 w-6 text-blue-600" />
+            CardiCare Assistant
+          </div>
+          <ApiStatusIndicator 
+            status={checkingApi ? 'unknown' : apiStatus} 
+            onRefresh={refreshApiStatus}
+          />
         </h2>
+        {apiStatus === 'offline' && (
+          <div className="mt-2 p-2 bg-red-50 text-red-800 text-xs rounded-md">
+            The chat service is currently unreachable. Please try again later or contact support if the issue persists.
+          </div>
+        )}
+        {apiStatus === 'fallback' && (
+          <div className="mt-2 p-2 bg-amber-50 text-amber-800 text-xs rounded-md">
+            Using backup server. Some features may be limited.
+          </div>
+        )}
       </div>
       <ScrollArea className="flex-grow p-4 space-y-4" ref={scrollAreaRef}>
         {messages.map((msg) => (
