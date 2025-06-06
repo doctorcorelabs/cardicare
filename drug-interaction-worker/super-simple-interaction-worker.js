@@ -6,12 +6,29 @@ addEventListener('fetch', event => {
 })
 
 async function handleRequest(request) {
-  // Set CORS headers to allow requests from any origin
-  const corsHeaders = {
-    'Access-Control-Allow-Origin': '*',
+  // Extract the origin from the request
+  const requestOrigin = request.headers.get('Origin') || '';
+  
+  // Set CORS headers to allow requests from our domain or local development
+  let corsHeaders = {
     'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type, Accept',
     'Access-Control-Max-Age': '86400'
+  };
+  
+  // Whitelist of allowed origins
+  const allowedOrigins = [
+    'https://cardicare.daivanlabs.site',
+    'http://localhost:8080',
+    'http://localhost:5173'
+  ];
+  
+  // Decide which origin to allow
+  if (allowedOrigins.includes(requestOrigin)) {
+    corsHeaders['Access-Control-Allow-Origin'] = requestOrigin;
+  } else {
+    // Default to the production domain
+    corsHeaders['Access-Control-Allow-Origin'] = 'https://cardicare.daivanlabs.site';
   }
 
   // Handle OPTIONS request for CORS preflight

@@ -25,7 +25,7 @@ interface ApiResponse {
 }
 
 // Configure worker URL for drug interaction API
-const WORKER_URL = 'http://localhost:8789'; // Using super simple worker with proper CORS support
+const WORKER_URL = 'https://drug-interaction-worker.cardicare.daivanlabs.site'; // Production worker URL
 
 const DrugInteractionChecker: React.FC = () => {
   const [drugInputs, setDrugInputs] = useState<DrugInput[]>([
