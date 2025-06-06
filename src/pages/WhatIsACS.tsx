@@ -57,7 +57,7 @@ const WhatIsACS = () => {
                 </div>
                 
                 <img 
-                  src="/public/acs dev.png" 
+                  src="/acs dev.png" 
                   alt="ACS development illustration" 
                   className="mx-auto w-full max-w-md rounded-lg shadow-lg"
                 />
