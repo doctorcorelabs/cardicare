@@ -12,7 +12,7 @@ export function getCorsHeaders(request: Request): Record<string, string> {
   // Base CORS headers that are applied to all responses
   const corsHeaders: Record<string, string> = {
     'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type, Accept, Cache-Control',
+    'Access-Control-Allow-Headers': 'Content-Type, Accept, Cache-Control, x-client-version',
     'Access-Control-Max-Age': '86400'
   };
   
