@@ -21,13 +21,13 @@ export default defineConfig(({ mode }) => ({
   // Define external API endpoints for production build
   define: {
     'import.meta.env.VITE_API_URL': mode === 'production' 
-      ? JSON.stringify('https://heart-health-ai-assistant.daivanlabs.workers.dev')
+      ? JSON.stringify('https://heart-health-ai-assistant.daivanfebrijuansetiya.workers.dev')
       : JSON.stringify('http://localhost:8787'),
     'import.meta.env.VITE_API_URL_FALLBACK': mode === 'production'
-      ? JSON.stringify('https://heart-health-ai-assistant.daivanlabs.workers.dev')
+      ? JSON.stringify('https://heart-health-ai-assistant.daivanfebrijuansetiya.workers.dev')
       : JSON.stringify('http://localhost:8787'),
     'import.meta.env.VITE_DRUG_INTERACTION_URL': mode === 'production'
-      ? JSON.stringify('https://drug-interaction-worker.daivanlabs.workers.dev')
+      ? JSON.stringify('https://drug-interaction-worker.daivanfebrijuansetiya.workers.dev')
       : JSON.stringify('http://localhost:8789'),
   },
   plugins: [

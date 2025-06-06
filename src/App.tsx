@@ -13,6 +13,7 @@ import NotFound from "./pages/NotFound";
 import Navigation from "./components/Navigation";
 import Footer from "./components/Footer";
 import NetworkErrorHandler from "./components/NetworkErrorHandler";
+import DnsErrorBoundary from "./components/DnsErrorBoundary";
 
 const queryClient = new QueryClient();
 
@@ -22,22 +23,24 @@ const App = () => (
       <Toaster />
       <Sonner />
       <BrowserRouter>
-        <NetworkErrorHandler>
-          <div className="min-h-screen flex flex-col">
-            <Navigation />
-            <main className="flex-1">
-              <Routes>
-                <Route path="/" element={<Index />} />
-                <Route path="/what-is-acs" element={<WhatIsACS />} />
-                <Route path="/types-of-acs" element={<TypesOfACS />} />
-                <Route path="/screening" element={<Screening />} />
-                <Route path="/diagnosis-treatment" element={<DiagnosisTreatment />} />
-                <Route path="*" element={<NotFound />} />
-              </Routes>
-            </main>
-            <Footer />
-          </div>
-        </NetworkErrorHandler>
+        <DnsErrorBoundary>
+          <NetworkErrorHandler>
+            <div className="min-h-screen flex flex-col">
+              <Navigation />
+              <main className="flex-1">
+                <Routes>
+                  <Route path="/" element={<Index />} />
+                  <Route path="/what-is-acs" element={<WhatIsACS />} />
+                  <Route path="/types-of-acs" element={<TypesOfACS />} />
+                  <Route path="/screening" element={<Screening />} />
+                  <Route path="/diagnosis-treatment" element={<DiagnosisTreatment />} />
+                  <Route path="*" element={<NotFound />} />
+                </Routes>
+              </main>
+              <Footer />
+            </div>
+          </NetworkErrorHandler>
+        </DnsErrorBoundary>
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>

@@ -2,11 +2,27 @@ import React, { useState, useRef, useEffect, FormEvent } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Bot, User, Send, Paperclip, XCircle } from 'lucide-react'; // Added Paperclip, XCircle
+import { Bot, User, Send, Paperclip, XCircle } from 'lucide-react';
 import ReactMarkdown, { Components } from 'react-markdown';
-import { fetchWithFallback } from '@/lib/api-utils';
+import { fetchWithFallback, getDiagnosticInfo } from '@/lib/api-utils';
 import { checkApiHealth } from '@/lib/api-health';
 import ApiStatusIndicator from '@/components/ApiStatusIndicator';
+
+// DNS resolution helper
+const isNetworkError = (error: Error): boolean => {
+  const errorMsg = error.message.toLowerCase();
+  return errorMsg.includes('network') || 
+         errorMsg.includes('failed to fetch') || 
+         errorMsg.includes('err_name_not_resolved') ||
+         errorMsg.includes('dns') ||
+         errorMsg.includes('connection');
+};
+
+// Direct IP fallback URLs in case DNS fails completely
+const IP_FALLBACK_URLS = [
+  "https://104.21.36.155/chat", // Example: Direct IP for Cloudflare worker (replace with your actual IP)
+  "https://172.67.150.37/chat"  // Example: Secondary IP (replace with your actual IP)
+];
 
 interface Message {
   id: string;
@@ -251,24 +267,86 @@ const Chatbot: React.FC = () => {
     });    try {
       // Use environment variable for API URL in production or fallback to relative path for development
       // Get both primary and fallback API URLs
-      const baseApiUrl = import.meta.env.DEV ? '/api' : import.meta.env.VITE_API_URL.replace(/\/+$/, '');
-      const fallbackApiUrl = import.meta.env.DEV ? '/api' : import.meta.env.VITE_API_URL_FALLBACK.replace(/\/+$/, '');
+      const baseApiUrl = import.meta.env.DEV ? '/api' : import.meta.env.VITE_API_URL?.replace(/\/+$/, '');
+      const fallbackApiUrl = import.meta.env.DEV ? '/api' : import.meta.env.VITE_API_URL_FALLBACK?.replace(/\/+$/, '');
       
-      const primaryApiUrl = `${baseApiUrl}/chat`;
-      const secondaryApiUrl = `${fallbackApiUrl}/chat`;
+      // Hard-coded fallback if environment variables fail to resolve
+      const hardcodedUrl = "https://heart-health-ai-assistant.daivanfebrijuansetiya.workers.dev";
       
-      console.log(`Attempting to send request using fetchWithFallback`);
+      // Prepare all possible API endpoints including IP fallbacks
+      const primaryApiUrl = baseApiUrl ? `${baseApiUrl}/chat` : `${hardcodedUrl}/chat`;
+      const secondaryApiUrl = fallbackApiUrl ? `${fallbackApiUrl}/chat` : `${hardcodedUrl}/chat`;
+      
+      // Add diagnostic info to the console for debugging
+      console.log(`Attempting to send request to API`);
+      console.log(`Primary URL: ${primaryApiUrl}`);
+      console.log(`Fallback URL: ${secondaryApiUrl}`);
+
+      // Also attempt to pre-resolve DNS to warm up the connection
+      try {
+        if (navigator.onLine) {
+          // Log network status
+          console.log(`Network appears online, attempting DNS prefetch`);
+          const link = document.createElement('link');
+          link.rel = 'dns-prefetch';
+          link.href = new URL(primaryApiUrl).origin;
+          document.head.appendChild(link);
+        } else {
+          console.warn('Browser reports network is offline');
+        }
+      } catch (prefetchError) {
+        console.warn('DNS prefetch attempt failed:', prefetchError);
+      }
       
       // Use our utility with automatic retries and fallback
-      const response = await fetchWithFallback(
-        primaryApiUrl,
-        secondaryApiUrl,
-        {
-          method: 'POST',
-          body: formData,
-        },
-        2 // maximum retry count
-      );if (!response.ok) { // Check response.ok first
+      let response: Response;
+      
+      try {
+        response = await fetchWithFallback(
+          primaryApiUrl,
+          secondaryApiUrl,
+          {
+            method: 'POST',
+            body: formData,
+            mode: 'cors',
+            credentials: 'omit',
+            cache: 'no-store'
+          },
+          3 // increased maximum retry count
+        );
+      } catch (fetchError) {
+        // If regular fetching with domains fails, try direct IP addresses as absolute last resort
+        if (fetchError instanceof Error && isNetworkError(fetchError)) {
+          console.log('Domain-based API fetch failed, trying direct IP fallbacks...');
+          for (const ipUrl of IP_FALLBACK_URLS) {
+            try {
+              console.log(`Trying direct IP fallback: ${ipUrl}`);
+              response = await fetch(ipUrl, {
+                method: 'POST',
+                body: formData,
+                mode: 'cors',
+                credentials: 'omit',
+                cache: 'no-store',
+                headers: {
+                  'Host': 'heart-health-ai-assistant.daivanfebrijuansetiya.workers.dev'
+                }
+              });
+              console.log('Direct IP fallback connection successful!');
+              break; // Exit the loop if successful
+            } catch (ipError) {
+              console.error(`IP fallback failed: ${ipError}`);
+              continue; // Try next IP if available
+            }
+          }
+          // If response is still undefined, all fallbacks failed
+          if (!response) {
+            throw new Error('All API connection attempts failed, including direct IP fallbacks.');
+          }
+        } else {
+          // If it's not a network error, re-throw
+          throw fetchError;
+        }
+      }if (!response.ok) { // Check response.ok first
         const errorText = await response.text();
         // Display specific error from backend if available
         const displayError = response.status === 413 ? 'File is too large. Max 10MB.' :
