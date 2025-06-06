@@ -9522,7 +9522,7 @@ function getCorsHeaders(request) {
   const requestOrigin = request.headers.get("Origin") || "";
   const corsHeaders = {
     "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-    "Access-Control-Allow-Headers": "Content-Type, Accept",
+    "Access-Control-Allow-Headers": "Content-Type, Accept, Cache-Control",
     "Access-Control-Max-Age": "86400"
   };
   const allowedOrigins = [
