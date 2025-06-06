@@ -59,11 +59,12 @@ export async function fetchWithFallback(
   ];
   
   const baseFetchOptions: RequestInit = {
+    // method and body will be merged from `options` later
     mode: 'cors' as RequestMode,
     credentials: 'omit' as RequestCredentials,
     cache: 'no-store' as RequestCache,
     headers: {
-      ...(options.headers || {}), 
+      // Specific headers for this utility, original headers from `options` will be merged later
       'Accept': 'text/plain, application/json, */*',
       'X-Client-Version': '2.0.3', // Updated client version for DNS cache integration
     }
@@ -129,8 +130,13 @@ export async function fetchWithFallback(
   for (const config of endpointConfigs) {
     let currentUrlToTry = config.getUrl(); 
     const currentOptions: RequestInit = {
-      ...baseFetchOptions,
-      headers: { ...(baseFetchOptions.headers || {}) } 
+      ...baseFetchOptions, // Includes mode, credentials, cache
+      method: options.method, // Carry over method from original options
+      body: options.body,     // Carry over body from original options
+      headers: {
+        ...(baseFetchOptions.headers || {}), // Headers from baseFetchOptions (Accept, X-Client-Version)
+        ...(options.headers || {}), // Headers from original options (e.g., Content-Type if it was set)
+      }
     };
     let attemptType = config.type;
 
@@ -170,7 +176,7 @@ export async function fetchWithFallback(
 
   // Retries
   console.log('Initial fetch attempts failed for all endpoints. Starting retries...');
-  for (let i = 0; i < maxRetries; i++) {
+    for (let i = 0; i < maxRetries; i++) {
     const delay = Math.pow(2, i) * 1000; 
     console.log(`Retry attempt ${i + 1}/${maxRetries} after ${delay}ms`);
     await new Promise(resolve => setTimeout(resolve, delay));
@@ -178,14 +184,19 @@ export async function fetchWithFallback(
     for (const config of endpointConfigs) { // Retry all configs
       let currentUrlToTry = config.getUrl();
       const retryFetchOptions: RequestInit = {
-        ...baseFetchOptions, 
-        headers: { 'Accept': '*/*' }, // Simplified headers for retry
-        keepalive: true, 
+        ...baseFetchOptions, // Includes mode, credentials, cache
+        method: options.method, // Carry over method from original options
+        body: options.body,     // Carry over body from original options (important for retrying POST)
+        headers: { // Merge headers carefully for retry
+          ...(baseFetchOptions.headers || {}),
+          ...(options.headers || {}), // Ensure original headers are also included for retry
+          'Accept': '*/*', // Override or ensure Accept is broad for retry
+        },
+        keepalive: true,
       };
-      const originalContentType = (options.headers as Record<string, string>)?.['Content-Type'] || (baseFetchOptions.headers as Record<string, string>)?.['Content-Type'];
-      if (originalContentType && retryFetchOptions.headers) {
-        (retryFetchOptions.headers as Record<string, string>)['Content-Type'] = originalContentType;
-      }
+      // Content-Type should be preserved from original options if it was a POST
+      // No need to manually set Content-Type here if options.headers are correctly merged.
+
       let attemptType = `${config.type}-retry-${i+1}`;
 
       // DNS Cache check for domain-based URLs during retries as well
