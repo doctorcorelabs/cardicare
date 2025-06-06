@@ -6,48 +6,48 @@ addEventListener('fetch', event => {
 })
 
 async function handleRequest(request) {
-  // Extract the origin from the request
   const requestOrigin = request.headers.get('Origin') || '';
   
-  // Set CORS headers to allow requests from our domain or local development
-  let corsHeaders = {
+  const corsHeaders = {
     'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type, Accept',
-    'Access-Control-Max-Age': '86400'
+    'Access-Control-Allow-Headers': 'Content-Type, Accept', // Ensure this covers all headers your client sends
+    'Access-Control-Max-Age': '86400' // 1 day
   };
-  // Whitelist of allowed origins
+
   const allowedOrigins = [
     'https://cardicare.daivanlabs.site',
-    'http://localhost:8080',
-    'http://localhost:5173',
-    'null' // This allows requests from the file:// protocol
+    'http://localhost:8080', // For local frontend development
+    'http://localhost:5173', // For local frontend development (e.g., Vite)
+    'null'                   // For requests from file:// protocol, if needed
   ];
-  
-  // For development or when running from a file, be more permissive
-  if (process.env.NODE_ENV !== 'production' || requestOrigin === 'null') {
-    corsHeaders['Access-Control-Allow-Origin'] = requestOrigin || '*';
-  }
-  // Otherwise use the whitelist
-  else if (allowedOrigins.includes(requestOrigin)) {
+
+  // Determine the Access-Control-Allow-Origin value
+  if (allowedOrigins.includes(requestOrigin)) {
     corsHeaders['Access-Control-Allow-Origin'] = requestOrigin;
   } else {
-    // Default to the production domain
-    corsHeaders['Access-Control-Allow-Origin'] = 'https://cardicare.daivanlabs.site';
-    console.log(`Rejected origin: ${requestOrigin}`);
+    // For any other origin not in the whitelist, or if requestOrigin is empty.
+    // Set a default ACAO. If an unallowed origin makes a request,
+    // the browser will block it because Origin and ACAO won't match.
+    // This ensures the ACAO header is always present in the response.
+    corsHeaders['Access-Control-Allow-Origin'] = 'https://cardicare.daivanlabs.site'; 
+    if (requestOrigin && requestOrigin !== 'null' && !allowedOrigins.includes(requestOrigin)) {
+      console.log(`CORS: Origin '${requestOrigin}' not in allowed list. Defaulting ACAO to primary domain to ensure header presence.`);
+    }
   }
 
   // Handle OPTIONS request for CORS preflight
   if (request.method === 'OPTIONS') {
+    // The corsHeaders object should now reliably have Access-Control-Allow-Origin set.
     return new Response(null, {
-      status: 204,
+      status: 204, // No Content
       headers: corsHeaders
-    })
+    });
   }
 
+  // For actual GET/POST requests, proceed with application logic
   try {
-    // Parse the request body
-    const data = await request.json()
-    const drugs = data.drugs || []
+    const data = await request.json();
+    const drugs = data.drugs || [];
     
     if (drugs.length < 2) {
       return new Response(
@@ -56,35 +56,35 @@ async function handleRequest(request) {
           status: 400,
           headers: {
             'Content-Type': 'application/json',
-            ...corsHeaders
+            ...corsHeaders // Spread the determined CORS headers
           }
         }
-      )
+      );
     }
 
-    // Perform the interaction check using our mock data
-    const interactions = checkDrugInteractions(drugs)
+    const interactions = checkDrugInteractions(drugs);
     
     return new Response(
       JSON.stringify({ interactions }), 
       { 
         headers: {
           'Content-Type': 'application/json',
-          ...corsHeaders
+          ...corsHeaders // Spread the determined CORS headers
         }
       }
-    )
+    );
   } catch (error) {
+    console.error('Error processing request:', error);
     return new Response(
-      JSON.stringify({ error: error.message }), 
+      JSON.stringify({ error: 'Internal server error: ' + error.message }), 
       { 
         status: 500,
         headers: {
           'Content-Type': 'application/json',
-          ...corsHeaders
+          ...corsHeaders // Spread the determined CORS headers, even for errors
         }
       }
-    )
+    );
   }
 }
 

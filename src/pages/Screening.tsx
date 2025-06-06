@@ -133,7 +133,7 @@ const Screening = () => {
     setShowResults(true); // Show results page structure immediately
 
     try {
-      const response = await fetch("https://heart-health-ai-assistant.daivanfebrijuansetiya.workers.dev", {
+      const response = await fetch("https://heart-health-ai-assistant.daivanfebrijuansetiya.workers.dev/chat", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
